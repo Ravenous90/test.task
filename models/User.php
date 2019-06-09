@@ -6,9 +6,23 @@ use yii\db\ActiveRecord;
 use yii\web\IdentityInterface;
 use yii\base\NotSupportedException;
 use Yii;
+use yii\helpers\Json;
 
-class User extends ActiveRecord implements IdentityInterface
+class User
 {
+
+    private $password;
+
+    private static function getAuthFilePath()
+    {
+        return Yii::getAlias('@webroot') . '/users.json';
+    }
+
+    private static function getUsersArr()
+    {
+        return Json::decode(file_get_contents(self::getAuthFilePath()));
+    }
+
     public static function tableName()
     {
         return 'users';
@@ -17,49 +31,112 @@ class User extends ActiveRecord implements IdentityInterface
     public function rules()
     {
         return [
-            [['username', 'email', 'password'], 'required'],
+            [['username', 'password'], 'required'],
             [['isActive'], 'integer'],
-            [['username', 'email', 'password', 'role'], 'string', 'max' => 255],
+            [['username', 'password'], 'string', 'max' => 255],
         ];
     }
 
-    public function getRelations()
+    public static function saveUser($data)
     {
-        return $this->hasMany(Relations::className(), ['user_id' => 'id']);
+        $usersArr = self::getUsersArr();
+        $usersArr[$data['username']] = [
+            'password' => $data['password'],
+            'time_signin' => date('Y-m-d H:i:s'),
+            'attempt_count' => 0
+        ];
+
+        if (file_put_contents(self::getAuthFilePath(), Json::encode($usersArr))) {
+            $session = Yii::$app->session;
+            $session['username'] = $data['username'];
+            return true;
+        } else {
+            return false;
+        }
     }
 
-    public function setPassword($password)
+    public static function authUser($username)
     {
-        $this->password = sha1($password);
+        return Yii::$app->session['username'] = $username;
     }
 
-    public function validatePassword($password)
+    public static function logout()
     {
-        return $this->password === sha1($password);
+        return Yii::$app->session->remove('username');
     }
 
-    public static function findIdentity($id)
+    public static function getOneUserData($username)
     {
-        return self::findOne($id);
+        $usersArr = self::getUsersArr();
+        if (array_key_exists($username, $usersArr)) {
+            return $usersArr[$username];
+        } else {
+            return null;
+        }
     }
 
-    public static function findIdentityByAccessToken($token, $type = null)
+    public static function updateCountAttemptsAndDate($username)
     {
-
+        $res = false;
+        $usersArr = self::getUsersArr();
+        $userArr = self::getOneUserData($username);
+        if (!is_null($userArr)) {
+            $usersArr[$username] = [
+                'password' => $userArr['password'],
+                'time_signin' => date('Y-m-d H:i:s'),
+                'attempt_count' => $userArr['attempt_count'] + 1,
+            ];
+            if (file_put_contents(self::getAuthFilePath(), Json::encode($usersArr))) {
+                $res = true;
+            }
+        }
+        return $res;
     }
 
-    public function getId()
+    public static function isAttemptValid($username)
     {
-        return $this->id;
+        $userArr = self::getOneUserData($username);
+        if (!is_null($userArr) && $userArr['attempt_count'] < 3) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
-    public function getAuthKey()
+    public static function isBlockTime($username)
     {
-
+        $userArr = self::getOneUserData($username);
+        if (!is_null($userArr)) {
+            return date('Y-m-d H:i:s', strtotime('- 5 min')) < date('Y-m-d H:i:s', strtotime($userArr['time_signin']));
+        } else {
+            return false;
+        }
     }
 
-    public function validateAuthKey($authKey)
+    public static function getTimeToLogin($username)
     {
+        $userArr = self::getOneUserData($username);
+        if (!is_null($userArr)) {
+            return date('H:i:s', strtotime($userArr['time_signin'] . '+ 5 minutes'));
+        } else {
+            return null;
+        }
+    }
 
+    public static function updateAttemptCount($username, $count = 0)
+    {
+        $res = false;
+        $usersArr = self::getUsersArr();
+        $userArr = self::getOneUserData($username);
+
+        $usersArr[$username] = [
+            'password' => $userArr['password'],
+            'time_signin' => date('Y-m-d H:i:s'),
+            'attempt_count' => $count,
+        ];
+        if (file_put_contents(self::getAuthFilePath(), Json::encode($usersArr))) {
+            $res = true;
+        }
+        return $res;
     }
 }

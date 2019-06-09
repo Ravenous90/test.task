@@ -5,5 +5,5 @@
 
 ?>
 <p>
-Hi, <?= Yii::$app->user->identity->username ?>
+Hi, <?= Yii::$app->session->get('username') ?>
 </p>

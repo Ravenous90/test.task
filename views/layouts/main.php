@@ -41,7 +41,7 @@ AppAsset::register($this);
     echo Nav::widget([
         'options' => ['class' => 'navbar-nav navbar-right'],
         'items' => [
-            Yii::$app->user->isGuest ? (
+            !Yii::$app->session->get('username') ? (
                 ['label' => 'Auth', 'url' => ['/user/signin'],
                     'options' => ['class' => 'auth']
                 ]
@@ -49,7 +49,7 @@ AppAsset::register($this);
                 '<li>'
                 . Html::beginForm(['/user/logout'], 'post')
                 . Html::submitButton(
-                    'Logout (' . Yii::$app->user->identity->username . ')',
+                    'Logout (' . Yii::$app->session->get('username') . ')',
                     ['class' => 'btn btn-link logout']
                 )
                 . Html::endForm()

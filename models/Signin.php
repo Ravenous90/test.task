@@ -9,6 +9,8 @@
 namespace app\models;
 
 use yii\base\Model;
+use yii\helpers\Json;
+use Yii;
 
 class Signin extends Model
 {
@@ -27,21 +29,40 @@ class Signin extends Model
         ];
     }
 
-    public function validatePassword($attribute, $params)
+    public static function validatePassword($username, $password)
     {
-        if (!$this->hasErrors()) { // if there are no mistakes in validation
-            $user = $this->getUser(); // get user for comparison passwords
-
-            if (!$user || !$user->validatePassword($this->password)) {
-                // if there isn't user in DB
-                // or password is invalid
-                $this->addError($attribute, 'Username or password is invalid');
+        $userData = User::getOneUserData($username);
+        if (!is_null($userData)) {
+            if (sha1($password) === $userData['password']) {
+                User::updateAttemptCount($username);
+                return true;
+            } else {
+                if (User::isAttemptValid($username)) {
+                    User::updateCountAttemptsAndDate($username);
+                    return Yii::$app->session->setFlash('error', 'Password is incorrect');
+                } else {
+                    if (User::isBlockTime($username)) {
+                        $time = User::getTimeToLogin($username);
+                        return Yii::$app->session->setFlash('error', 'You have too many attempts to login. Please, try at ' . $time);
+                    } else {
+                        User::updateAttemptCount($username, 1);
+                        return Yii::$app->session->setFlash('error', 'Password is incorrect');
+                    }
+                }
             }
+        } else {
+            return Yii::$app->session->setFlash('error', 'There is no user');
         }
     }
 
-    public function getUser()
+    public static function checkAuth($username, $password)
     {
-        return User::findOne(['username' => $this->username]);
+        $isCheck = self::validatePassword($username, $password);
+        if ($isCheck) {
+            User::authUser($username);
+            return true;
+        } else {
+            return false;
+        }
     }
 }

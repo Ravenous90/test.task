@@ -12,18 +12,18 @@ use app\models\Signin;
 use app\models\Signup;
 use Yii;
 use yii\web\Controller;
+use app\models\User;
 
 class UserController extends Controller
 {
     public function actionSignup()
     {
         $model = new Signup();
-
         if (isset($_POST['Signup'])) {
-            $model->attributes = Yii::$app->request->post('Signup');
-
-            if ($model->validate() && $model->signup()) {
-                return $this->goHome();
+            $username = Yii::$app->request->post('Signup')['username'];
+            $password = Yii::$app->request->post('Signup')['password'];
+            if ($model->signup($username, $password)) {
+                return $this->redirect('index');
             }
         }
         return $this->render('signup',['model' => $model]);
@@ -31,33 +31,32 @@ class UserController extends Controller
 
     public function actionSignin()
     {
-        if (!Yii::$app->user->isGuest) {
+        $model = new Signin();
+        if (Yii::$app->session->get('username')) {
             return $this->redirect('index');
         }
-        $signin_model = new Signin();
 
-        if ( Yii::$app->request->post('Signin')) {
-            $signin_model->attributes = Yii::$app->request->post('Signin');
-
-            if ($signin_model->validate()) {
-                Yii::$app->user->login($signin_model->getUser());
-                return $this->redirect('index');
-            }
+        if (isset($_POST['Signin'])) {
+            $username = Yii::$app->request->post('Signin')['username'];
+            $password = Yii::$app->request->post('Signin')['password'];
+                if (Signin::checkAuth($username, $password)) {
+                    return $this->redirect('index');
+                }
         }
-        return $this->render('signin',['signin_model' => $signin_model]);
+        return $this->render('signin',['model' => $model]);
     }
 
     public function actionLogout()
     {
-        if (!Yii::$app->user->isGuest) {
-            Yii::$app->user->logout();
-            return $this->redirect(['signin']);
-        }
+        User::logout();
+        return $this->redirect(['signin']);
     }
 
     public function actionIndex()
     {
-        if (!Yii::$app->user->isGuest) {
+        if (!Yii::$app->session->get('username')) {
+            return $this->redirect('signin');
+        } else {
             return $this->render('index');
         }
     }

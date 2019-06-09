@@ -8,7 +8,6 @@
 
 namespace app\models;
 
-
 use yii\base\Model;
 
 class Signup extends Model
@@ -20,26 +19,24 @@ class Signup extends Model
     public function rules()
     {
         return [
-            [ ['username', 'email', 'password'], 'required', 'message' => 'Field is required'],
-            [ 'email', 'email', 'message' => 'E-mail is invalid'],
-            [ ['username', 'email'], 'unique' , 'targetClass' => 'app\models\User', 'message' => 'This user has been already registered'],
-            [ ['username', 'email', 'password'], 'string', 'length' => [3, 64],
+            [ ['username', 'password'], 'required', 'message' => 'Field is required'],
+            [ ['username'], 'unique' , 'targetClass' => 'app\models\User', 'message' => 'This user has been already registered'],
+            [ ['username', 'password'], 'string', 'length' => [3, 64],
                 'tooShort' => 'Field must contain at least 3 symbols',
                 'tooLong' => 'Field must contain no more 64 symbols' ],
             [ 'username', 'trim']
         ];
     }
 
-    public function signup()
+    public function signup($username, $password)
     {
-        $user = new User();
+        $pass = sha1($password);
 
-        $user->username = $this->username;
-        $user->email = $this->email;
-
-        $user->setPassword($this->password);
-
-        return $user->save();
+        $data = [
+            'username' => $username,
+            'password' => $pass
+        ];
+        return User::saveUser($data);
     }
 
 }

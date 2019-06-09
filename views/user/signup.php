@@ -11,7 +11,6 @@ use yii\helpers\Html;
 ?>
 
 <?= $form->field($model, 'username')->textInput(['autofocus' => false]) ?>
-<?= $form->field($model, 'email')->textInput() ?>
 <?= $form->field($model, 'password')->passwordInput() ?>
 
 <div class="form_btns">
