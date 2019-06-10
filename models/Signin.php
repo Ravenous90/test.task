@@ -25,7 +25,6 @@ class Signin extends Model
                 'tooShort' => 'Field must contain at least 3 symbols',
                 'tooLong' => 'Field must contain no more 64 symbols' ],
             [ 'username', 'trim'],
-            [ 'password', 'validatePassword'] // own function for validate password
         ];
     }
 
@@ -33,7 +32,7 @@ class Signin extends Model
     {
         $userData = User::getOneUserData($username);
         if (!is_null($userData)) {
-            if (sha1($password) === $userData['password']) {
+            if (sha1($password) === $userData['password'] && !User::isBlockTime($username)) {
                 User::updateAttemptCount($username);
                 return true;
             } else {

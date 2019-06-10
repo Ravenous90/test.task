@@ -10,9 +10,6 @@ use yii\helpers\Json;
 
 class User
 {
-
-    private $password;
-
     private static function getAuthFilePath()
     {
         return Yii::getAlias('@webroot') . '/users.json';
@@ -39,20 +36,20 @@ class User
 
     public static function saveUser($data)
     {
+        $res = false;
         $usersArr = self::getUsersArr();
-        $usersArr[$data['username']] = [
-            'password' => $data['password'],
-            'time_signin' => date('Y-m-d H:i:s'),
-            'attempt_count' => 0
-        ];
-
-        if (file_put_contents(self::getAuthFilePath(), Json::encode($usersArr))) {
-            $session = Yii::$app->session;
-            $session['username'] = $data['username'];
-            return true;
-        } else {
-            return false;
+        if (!array_key_exists($data['username'], $usersArr)) {
+            $usersArr[$data['username']] = [
+                'password' => $data['password'],
+                'time_signin' => date('Y-m-d H:i:s'),
+                'attempt_count' => 0
+            ];
+            file_put_contents(self::getAuthFilePath(), Json::encode($usersArr));
+                $session = Yii::$app->session;
+                $session['username'] = $data['username'];
+                $res = true;
         }
+        return $res;
     }
 
     public static function authUser($username)
@@ -106,7 +103,7 @@ class User
     public static function isBlockTime($username)
     {
         $userArr = self::getOneUserData($username);
-        if (!is_null($userArr)) {
+        if (!is_null($userArr) && $userArr['attempt_count'] >= 3) {
             return date('Y-m-d H:i:s', strtotime('- 5 min')) < date('Y-m-d H:i:s', strtotime($userArr['time_signin']));
         } else {
             return false;

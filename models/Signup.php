@@ -9,6 +9,7 @@
 namespace app\models;
 
 use yii\base\Model;
+use Yii;
 
 class Signup extends Model
 {
@@ -36,7 +37,11 @@ class Signup extends Model
             'username' => $username,
             'password' => $pass
         ];
-        return User::saveUser($data);
+        if (User::saveUser($data)){
+            return true;
+        } else {
+            return Yii::$app->session->setFlash('error', 'There is account with this username');
+        }
     }
 
 }
